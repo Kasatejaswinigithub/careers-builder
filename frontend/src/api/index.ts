@@ -36,7 +36,7 @@ export const authApi = {
 // ── Tenant ────────────────────────────────────────────────────────────
 export const tenantApi = {
   get: () => api.get('/tenant').then(r => r.data),
-  updateBranding: (data: Record<string, string>) => api.patch('/tenant/branding', data).then(r => r.data),
+  updateBranding: (data: Record<string, unknown>) => api.patch('/tenant/branding', data).then(r => r.data),
   setPublished: (published: boolean) => api.patch('/tenant/publish', { published }).then(r => r.data),
 };
 
