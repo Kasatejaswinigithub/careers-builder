@@ -1,8 +1,13 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const mongoUri = process.env.MONGODB_URI;
+if (!mongoUri) {
+  throw new Error('MONGODB_URI environment variable is required');
+}
+
 export const config = {
-  mongoUri:     process.env.MONGODB_URI || 'mongodb://localhost:27017/careers',
+  mongoUri,
   jwtSecret:    process.env.JWT_SECRET  || 'dev_secret',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   port:         parseInt(process.env.PORT || '4000', 10),
