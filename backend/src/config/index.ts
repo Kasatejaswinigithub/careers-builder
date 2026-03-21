@@ -14,4 +14,5 @@ export const config = {
   nodeEnv:      process.env.NODE_ENV || 'development',
   isDev:        process.env.NODE_ENV !== 'production',
   frontendUrl:  process.env.FRONTEND_URL || 'http://localhost:5173',
+  allowedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(','),
 };

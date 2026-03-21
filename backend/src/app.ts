@@ -15,8 +15,7 @@ app.use(cors({
     if (config.isDev) {
       callback(null, true);
     } else {
-      const allowed = (process.env.ALLOWED_ORIGINS || '').split(',');
-      callback(null, !origin || allowed.includes(origin));
+      callback(null, !origin || config.allowedOrigins.includes(origin));
     }
   },
   credentials: true,

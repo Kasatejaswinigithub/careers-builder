@@ -15,6 +15,10 @@ services:
         value: 7d
       - key: PORT
         value: 4000
+      - key: ALLOWED_ORIGINS
+        value: https://your-frontend.vercel.app
+      - key: FRONTEND_URL
+        value: https://your-frontend.vercel.app
 
   - type: web
     name: careers-frontend
