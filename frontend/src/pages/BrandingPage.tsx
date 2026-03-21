@@ -4,6 +4,8 @@ import { useAuthStore } from '../store/auth.store';
 import { Button, Input, Textarea, ColorPicker, Spinner } from '../components/ui';
 
 interface Branding {
+  [key: string]: string;   // ✅ ADD THIS LINE
+
   primaryColor: string;
   secondaryColor: string;
   logoUrl: string;
@@ -86,7 +88,7 @@ export function BrandingPage() {
   async function handleSave() {
     setSaving(true);
     try {
-      const response = await tenantApi.updateBranding(form);
+const response = await tenantApi.updateBranding({ ...form });
       const updatedTenant = response?.data ?? response;
 
       setTenant(updatedTenant);
