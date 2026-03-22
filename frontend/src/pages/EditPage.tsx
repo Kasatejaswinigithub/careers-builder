@@ -3,22 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { tenantApi, jobsApi } from '../api';
 import { useAuthStore } from '../store/auth.store';
 import { Button, Input, Textarea, ColorPicker, Spinner } from '../components/ui';
+import { BrandingDTO } from '../../../shared/types';
 
 // --- Interfaces ---
-interface Branding {
-  primaryColor: string; 
-  secondaryColor: string; 
-  logoUrl: string;
-  bannerUrl: string; 
-  cultureVideoUrl: string; 
-  heroHeadline: string;
-  heroSubtext: string; 
-  about: string; 
-  lifeAtCompany: string;
-  website: string; 
-  linkedin: string; 
-  twitter: string;
-}
+interface Branding extends BrandingDTO {}
 
 interface Job {
   _id: string; 
@@ -99,7 +87,7 @@ export function EditPage() {
   async function handleSave() {
     setSaving(true);
     try {
-      const response = await tenantApi.updateBranding(brandingData);
+      const response = await tenantApi.updateBranding(brandingData as Record<string, unknown>);
       setTenant(response?.data ?? response);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
