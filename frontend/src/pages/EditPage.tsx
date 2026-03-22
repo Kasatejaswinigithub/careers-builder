@@ -87,7 +87,7 @@ export function EditPage() {
   async function handleSave() {
     setSaving(true);
     try {
-      const response = await tenantApi.updateBranding(brandingData as Record<string, unknown>);
+      const response = await tenantApi.updateBranding({ ...brandingData });
       setTenant(response?.data ?? response);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
