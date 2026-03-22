@@ -56,61 +56,105 @@ export function ApplicationsPage() {
   }
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-8">
+      {/* Header section - stacks on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Applications</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{total} total</p>
+          <h1 className="text-2xl font-bold text-gray-900">Applications</h1>
+          <p className="text-sm text-gray-500">{total} total applicants</p>
         </div>
-        <div className="w-44">
-          <Select options={STATUS_OPTIONS} value={statusFilter} onChange={function(e) { setStatusFilter(e.target.value); }} />
+        <div className="w-full sm:w-48">
+          <Select 
+            options={STATUS_OPTIONS} 
+            value={statusFilter} 
+            onChange={(e) => setStatusFilter(e.target.value)} 
+          />
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200">
-        {loading ? (
-          <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
-        ) : apps.length === 0 ? (
-          <EmptyState title="No applications yet" description="Applications will appear here once candidates apply." />
-        ) : (
-          <div className="overflow-x-auto">
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>
+      ) : apps.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200">
+          <EmptyState title="No applications found" description="Try changing your status filter or wait for new candidates." />
+        </div>
+      ) : (
+        <>
+          {/* MOBILE VIEW: Card List (Hidden on Desktop) */}
+          <div className="grid grid-cols-1 gap-4 md:hidden">
+            {apps.map((app) => (
+              <div key={app._id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-900 truncate">{app.applicant.name}</p>
+                    <p className="text-xs text-gray-500 truncate">{app.applicant.email}</p>
+                  </div>
+                  <Badge color={statusColor(app.status)}>{app.status}</Badge>
+                </div>
+                
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Job:</span>
+                    <span className="text-gray-700 font-medium">{getJobTitle(app.jobId)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-400">Date:</span>
+                    <span className="text-gray-700">{new Date(app.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-gray-100">
+                  <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-2 font-semibold">Update Status</p>
+                  <Select
+                    options={STATUS_OPTIONS.filter(o => o.value !== '')}
+                    value={app.status}
+                    onChange={(e) => updateStatus(app._id, e.target.value)}
+                    className="w-full py-1.5 text-xs"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* DESKTOP VIEW: Table (Hidden on Mobile) */}
+          <div className="hidden md:block bg-white rounded-xl border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="bg-gray-50">
                 <tr className="text-left border-b border-gray-200">
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Candidate</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Job</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Applied</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Status</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Move to</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Candidate</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Job Title</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Applied On</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {apps.map(function(app) {
-                  return (
-                    <tr key={app._id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3">
-                        <p className="font-medium text-gray-900">{app.applicant.name}</p>
-                        <p className="text-xs text-gray-400">{app.applicant.email}</p>
-                      </td>
-                      <td className="px-5 py-3 text-gray-500">{getJobTitle(app.jobId)}</td>
-                      <td className="px-5 py-3 text-gray-500">{new Date(app.createdAt).toLocaleDateString()}</td>
-                      <td className="px-5 py-3"><Badge color={statusColor(app.status)}>{app.status}</Badge></td>
-                      <td className="px-5 py-3">
-                        <Select
-                          options={STATUS_OPTIONS.filter(function(o) { return o.value !== ''; })}
-                          value={app.status}
-                          onChange={function(e) { updateStatus(app._id, e.target.value); }}
-                          className="w-36 py-1 text-xs"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
+                {apps.map((app) => (
+                  <tr key={app._id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-gray-900">{app.applicant.name}</p>
+                      <p className="text-xs text-gray-400">{app.applicant.email}</p>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{getJobTitle(app.jobId)}</td>
+                    <td className="px-6 py-4 text-gray-500">{new Date(app.createdAt).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      <Badge color={statusColor(app.status)}>{app.status}</Badge>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Select
+                        options={STATUS_OPTIONS.filter(o => o.value !== '')}
+                        value={app.status}
+                        onChange={(e) => updateStatus(app._id, e.target.value)}
+                        className="w-32 ml-auto py-1 text-xs"
+                      />
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }

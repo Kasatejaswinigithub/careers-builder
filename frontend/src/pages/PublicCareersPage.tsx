@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { publicApi } from '../api';
 
@@ -24,7 +24,7 @@ const JOB_TYPE_LABELS: Record<string, string> = {
 
 function timeAgo(dateStr: string): string {
   const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
-  if (days === 0) return 'Today';
+  if (days <= 0) return 'Today';
   if (days === 1) return '1 day ago';
   if (days < 30) return days + ' days ago';
   return Math.floor(days / 30) + ' months ago';
@@ -34,14 +34,14 @@ function salary(job: Job): string {
   if (!job.salaryMin && !job.salaryMax) return '';
   const cur = job.salaryCurrency || 'USD';
   const fmt = new Intl.NumberFormat('en-US', { style: 'currency', currency: cur, maximumFractionDigits: 0 });
-  if (job.salaryMin && job.salaryMax) return fmt.format(job.salaryMin) + ' - ' + fmt.format(job.salaryMax);
-  if (job.salaryMin) return fmt.format(job.salaryMin) + '+';
-  return 'Up to ' + fmt.format(job.salaryMax!);
+  if (job.salaryMin && job.salaryMax) return `${fmt.format(job.salaryMin)} - ${fmt.format(job.salaryMax)}`;
+  if (job.salaryMin) return `${fmt.format(job.salaryMin)}+`;
+  return `Up to ${fmt.format(job.salaryMax!)}`;
 }
 
 function Spinner() {
   return (
-    <svg className="animate-spin h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24">
+    <svg className="animate-spin h-6 w-6 text-indigo-500" fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
@@ -55,16 +55,14 @@ function ApplyDrawer({ job, company, onClose }: { job: Job; company: Company; on
   const [error, setError]   = useState('');
   const [form, setForm]     = useState({ name: '', email: '', phone: '', linkedin: '', coverLetter: '' });
 
-  useEffect(function() {
+  useEffect(() => {
     document.body.style.overflow = 'hidden';
-    return function() { document.body.style.overflow = ''; };
+    return () => { document.body.style.overflow = ''; };
   }, []);
 
-  function setField(k: string) {
-    return function(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-      setForm(function(f) { return Object.assign({}, f, { [k]: e.target.value }); });
-    };
-  }
+  const setField = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm(prev => ({ ...prev, [k]: e.target.value }));
+  };
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,17 +73,16 @@ function ApplyDrawer({ job, company, onClose }: { job: Job; company: Company; on
         coverLetter: form.coverLetter || undefined,
       });
       setStep('done');
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      setError(axiosErr.response?.data?.message || 'Something went wrong. Please try again.');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
     } finally { setSaving(false); }
   }
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/50" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col" style={{ animation: 'slideIn 0.25s ease' }}>
-        <style>{'.slide-in{animation:slideIn .25s ease}@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}'}</style>
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col slide-in">
+        <style>{`@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}} .slide-in{animation:slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)}`}</style>
 
         <div className="flex items-start justify-between p-6 border-b border-gray-100">
           <div>
@@ -93,67 +90,55 @@ function ApplyDrawer({ job, company, onClose }: { job: Job; company: Company; on
             <h2 className="text-lg font-bold text-gray-900">{job.title}</h2>
             <p className="text-sm text-gray-500 mt-0.5">{job.location}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 text-xl" aria-label="Close">x</button>
+          <button onClick={onClose} className="p-2 -mr-2 rounded-full hover:bg-gray-100 text-gray-400 transition-colors">✕</button>
         </div>
 
         {step === 'done' ? (
           <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center text-2xl mb-4" style={{ backgroundColor: primary + '20', color: primary }}>
-              ✓
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Application submitted!</h3>
-            <p className="text-gray-500 text-sm">
-              {'Thanks, ' + form.name.split(' ')[0] + "! We'll be in touch at " + form.email + '.'}
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-3xl mb-4" style={{ backgroundColor: `${primary}15`, color: primary }}>✓</div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Application sent!</h3>
+            <p className="text-gray-500 text-sm leading-relaxed">
+              Thanks, {form.name.split(' ')[0]}! We'll be in touch at <strong>{form.email}</strong> soon.
             </p>
-            <button onClick={onClose} className="mt-6 px-6 py-2.5 rounded-full text-sm font-semibold text-white" style={{ backgroundColor: primary }}>
-              Close
+            <button onClick={onClose} className="mt-8 w-full py-3 rounded-xl text-sm font-bold text-white transition-transform active:scale-95" style={{ backgroundColor: primary }}>
+              Done
             </button>
           </div>
         ) : (
           <form onSubmit={submit} className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    Full name <span className="text-red-400">*</span>
-                  </label>
-                  <input required value={form.name} onChange={setField('name')} placeholder="Jane Smith"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Full name *</label>
+                    <input required value={form.name} onChange={setField('name')} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-opacity-20 outline-none" style={{"--tw-ring-color": primary} as any} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Email *</label>
+                    <input required type="email" value={form.email} onChange={setField('email')} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Phone</label>
+                    <input value={form.phone} onChange={setField('phone')} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">LinkedIn</label>
+                    <input value={form.linkedin} onChange={setField('linkedin')} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none" />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                    Email <span className="text-red-400">*</span>
-                  </label>
-                  <input required type="email" value={form.email} onChange={setField('email')} placeholder="jane@example.com"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Phone</label>
-                  <input value={form.phone} onChange={setField('phone')} placeholder="+1 555 000 0000"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">LinkedIn</label>
-                  <input value={form.linkedin} onChange={setField('linkedin')} placeholder="linkedin.com/in/jane"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-gray-400" />
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Cover letter</label>
+                  <textarea rows={5} value={form.coverLetter} onChange={setField('coverLetter')} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm resize-none outline-none" />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Cover letter</label>
-                <textarea rows={6} value={form.coverLetter} onChange={setField('coverLetter')}
-                  placeholder="Tell us why you are excited about this role..."
-                  className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-gray-400" />
-              </div>
-              {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">{error}</div>}
+              {error && <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-xs font-medium text-red-600 leading-snug">{error}</div>}
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3">
-              <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-full text-sm font-semibold border border-gray-200 text-gray-600 hover:bg-gray-50">
-                Cancel
-              </button>
-              <button type="submit" disabled={saving} className="flex-1 py-2.5 rounded-full text-sm font-semibold text-white flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: primary }}>
-                {saving ? <Spinner /> : 'Submit application'}
+              <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
+              <button type="submit" disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-all flex items-center justify-center" style={{ backgroundColor: primary }}>
+                {saving ? <Spinner /> : 'Apply Now'}
               </button>
             </div>
           </form>
@@ -170,21 +155,22 @@ export function PublicCareersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
   const [applyJob, setApplyJob] = useState<Job | null>(null);
+  
   const [search, setSearch]     = useState('');
   const [locFilter, setLocFilter]   = useState('');
   const [typeFilter, setTypeFilter] = useState('');
 
-  useEffect(function() {
+  useEffect(() => {
     async function load() {
       try {
-        const [comp, jobsData] = await Promise.all([
+        const [comp, jobsRes] = await Promise.all([
           publicApi.getCompany(slug),
           publicApi.getJobs(slug),
         ]);
         setCompany(comp);
-        setJobs(jobsData.data || jobsData);
-      } catch {
-        setError('This careers page could not be found.');
+        setJobs(jobsRes.data || jobsRes);
+      } catch (err) {
+        setError('Careers page not found.');
       } finally {
         setLoading(false);
       }
@@ -192,346 +178,158 @@ export function PublicCareersPage() {
     load();
   }, [slug]);
 
-  useEffect(function() {
+  useEffect(() => {
     if (!company) return;
-    document.title = company.name + ' Careers';
-    var meta = document.querySelector('meta[name="description"]');
-    if (!meta) { meta = document.createElement('meta'); meta.setAttribute('name', 'description'); document.head.appendChild(meta); }
-    meta.setAttribute('content', company.branding.heroSubtext || 'Join ' + company.name);
-    var ogTitle = document.querySelector('meta[property="og:title"]');
-    if (!ogTitle) { ogTitle = document.createElement('meta'); ogTitle.setAttribute('property', 'og:title'); document.head.appendChild(ogTitle); }
-    ogTitle.setAttribute('content', company.name + ' - Careers');
-    var ogDesc = document.querySelector('meta[property="og:description"]');
-    if (!ogDesc) { ogDesc = document.createElement('meta'); ogDesc.setAttribute('property', 'og:description'); document.head.appendChild(ogDesc); }
-    ogDesc.setAttribute('content', company.branding.heroSubtext || 'Explore open roles at ' + company.name);
-    var ogType = document.querySelector('meta[property="og:type"]');
-    if (!ogType) { ogType = document.createElement('meta'); ogType.setAttribute('property', 'og:type'); document.head.appendChild(ogType); }
-    ogType.setAttribute('content', 'website');
-    var existingLd = document.getElementById('ld-json');
-    if (existingLd) existingLd.remove();
-    var ldScript = document.createElement('script');
-    ldScript.id = 'ld-json';
-    ldScript.type = 'application/ld+json';
-    ldScript.text = JSON.stringify({
+    
+    // SEO Updates
+    document.title = `${company.name} Careers`;
+    const updateMeta = (name: string, content: string, attr = 'name') => {
+      let el = document.querySelector(`meta[${attr}="${name}"]`);
+      if (!el) {
+        el = document.createElement('meta');
+        el.setAttribute(attr, name);
+        document.head.appendChild(el);
+      }
+      el.setAttribute('content', content);
+    };
+
+    updateMeta('description', company.branding.heroSubtext || `Join the team at ${company.name}`);
+    updateMeta('og:title', `${company.name} - Careers`, 'property');
+    updateMeta('og:description', company.branding.heroSubtext || 'Join our team', 'property');
+
+    // JSON-LD Cleanup and Mount
+    const ldId = 'ld-json-company';
+    document.getElementById(ldId)?.remove();
+    const script = document.createElement('script');
+    script.id = ldId;
+    script.type = 'application/ld+json';
+    script.text = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'Organization',
       'name': company.name,
       'url': company.branding.website || window.location.origin,
       'sameAs': [company.branding.linkedin, company.branding.twitter].filter(Boolean),
     });
-    document.head.appendChild(ldScript);
+    document.head.appendChild(script);
+
+    return () => { document.getElementById(ldId)?.remove(); };
   }, [company]);
 
-  const locations = useMemo(function() {
-    return Array.from(new Set(jobs.map(function(j) { return j.location; }).filter(Boolean))).sort();
-  }, [jobs]);
+  const locations = useMemo(() => Array.from(new Set(jobs.map(j => j.location).filter(Boolean))).sort(), [jobs]);
+  const types = useMemo(() => Array.from(new Set(jobs.map(j => j.jobType).filter(Boolean))).sort(), [jobs]);
 
-  const types = useMemo(function() {
-    return Array.from(new Set(jobs.map(function(j) { return j.jobType; }).filter(Boolean))).sort();
-  }, [jobs]);
-
-  const filtered = useMemo(function() {
-    return jobs.filter(function(j) {
-      var matchSearch = !search || j.title.toLowerCase().includes(search.toLowerCase());
-      var matchLoc    = !locFilter  || j.location === locFilter;
-      var matchType   = !typeFilter || j.jobType  === typeFilter;
+  const filtered = useMemo(() => {
+    return jobs.filter(j => {
+      const matchSearch = !search || j.title.toLowerCase().includes(search.toLowerCase());
+      const matchLoc    = !locFilter  || j.location === locFilter;
+      const matchType   = !typeFilter || j.jobType  === typeFilter;
       return matchSearch && matchLoc && matchType;
     });
   }, [jobs, search, locFilter, typeFilter]);
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Spinner />
-    </div>
-  );
-
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
   if (error || !company) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 text-center">
-      <p className="text-4xl">404</p>
-      <h1 className="text-xl font-bold text-gray-800">Page not found</h1>
-      <p className="text-gray-500 text-sm">{error || 'This careers page does not exist.'}</p>
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center bg-white">
+      <h1 className="text-6xl font-black text-gray-100 mb-4">404</h1>
+      <p className="text-xl font-bold text-gray-800">Careers page not found</p>
+      <p className="text-gray-400 mt-2 max-w-xs">{error}</p>
     </div>
   );
 
-  const primary   = company.branding.primaryColor || '#6366f1';
-  const secondary = company.branding.secondaryColor || '#eef2ff';
-  const hasFilters = search || locFilter || typeFilter;
+  const primary = company.branding.primaryColor || '#6366f1';
+  const secondary = company.branding.secondaryColor || '#f8fafc';
 
   return (
-    <div className="min-h-screen bg-gray-50" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui' }}>
-
-      {/* Nav */}
-      <nav className="sticky top-0 z-20 bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+      <nav className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-gray-100">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             {company.branding.logoUrl ? (
-              <img src={company.branding.logoUrl} alt={company.name} className="h-7 object-contain" />
+              <img src={company.branding.logoUrl} alt={company.name} className="h-8 object-contain" />
             ) : (
-              <span className="font-bold text-gray-900 text-lg">{company.name}</span>
+              <span className="font-black text-xl tracking-tight">{company.name}</span>
             )}
           </div>
-          <a
-            href="#jobs"
-            className="text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full border-2 transition-colors"
-            style={{ borderColor: primary, color: primary }}
-          >
-            Open roles
-          </a>
+          <a href="#jobs" className="text-[11px] font-black uppercase tracking-[0.2em] px-5 py-2.5 rounded-full border-2 transition-all hover:bg-gray-50" style={{ borderColor: primary, color: primary }}>Open Roles</a>
         </div>
       </nav>
 
-      {/* Hero / Banner */}
-      <header style={{ backgroundColor: secondary }}>
+      <header style={{ backgroundColor: secondary }} className="relative overflow-hidden">
         {company.branding.bannerUrl && (
-          <div className="relative h-48 sm:h-64 overflow-hidden">
-            <img src={company.branding.bannerUrl} alt="Company banner" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-black/30" />
+          <div className="h-64 sm:h-80 relative">
+            <img src={company.branding.bannerUrl} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
           </div>
         )}
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
-          <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: primary }}>
-            {company.name + ' - Careers'}
-          </p>
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-4" style={{ color: primary }}>
+        <div className="max-w-5xl mx-auto px-6 py-16 sm:py-24">
+          <p className="text-[11px] font-black uppercase tracking-[0.25em] mb-4" style={{ color: primary }}>{company.name} Careers</p>
+          <h1 className="text-4xl sm:text-6xl font-black leading-[1.1] tracking-tight mb-6" style={{ color: primary }}>
             {company.branding.heroHeadline || 'Join our team'}
           </h1>
-          <p className="text-base sm:text-lg text-gray-600 max-w-2xl leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl leading-relaxed font-medium">
             {company.branding.heroSubtext || 'We are looking for talented people to join us.'}
           </p>
-          {jobs.length > 0 && (
-            <div className="flex gap-4 mt-8 flex-wrap">
-              <div className="bg-white rounded-xl px-5 py-3 shadow-sm border border-gray-200">
-                <p className="text-2xl font-bold text-gray-900">{jobs.length}</p>
-                <p className="text-xs text-gray-500 mt-0.5 uppercase tracking-wide">Open roles</p>
-              </div>
-              {locations.slice(0, 2).map(function(loc) {
-                return (
-                  <div key={loc} className="bg-white rounded-xl px-5 py-3 shadow-sm border border-gray-200">
-                    <p className="text-2xl font-bold text-gray-900">{jobs.filter(function(j) { return j.location === loc; }).length}</p>
-                    <p className="text-xs text-gray-500 mt-0.5 uppercase tracking-wide">{loc}</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-16">
-
-        {/* About */}
+      <main className="max-w-5xl mx-auto px-6 py-20 space-y-24">
         {company.branding.about && (
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: primary }}>About us</h2>
-            <p className="text-gray-600 text-base leading-relaxed">{company.branding.about}</p>
+            <h2 className="text-[11px] font-black uppercase tracking-[0.25em] mb-6" style={{ color: primary }}>About us</h2>
+            <p className="text-gray-600 text-lg leading-relaxed max-w-3xl">{company.branding.about}</p>
           </section>
         )}
 
-        {/* Life at company */}
-        {company.branding.lifeAtCompany && (
-          <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: primary }}>Life at {company.name}</h2>
-            <p className="text-gray-600 text-base leading-relaxed">{company.branding.lifeAtCompany}</p>
-          </section>
-        )}
-
-        {/* Culture video */}
-        {company.branding.cultureVideoUrl && (
-          <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: primary }}>Our culture</h2>
-            <div className="relative" style={{ paddingBottom: '56.25%', height: 0 }}>
-              <iframe
-                src={company.branding.cultureVideoUrl}
-                title="Culture video"
-                className="absolute top-0 left-0 w-full h-full rounded-2xl border border-gray-200"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          </section>
-        )}
-
-        {/* Job listings */}
         <section id="jobs">
-          <div className="flex items-baseline justify-between flex-wrap gap-3 mb-6">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900">
-              Open positions
-              <span className="ml-2 text-base font-normal text-gray-400">({filtered.length})</span>
-            </h2>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+            <div>
+              <h2 className="text-3xl font-black tracking-tight">Open positions</h2>
+              <p className="text-gray-400 font-bold text-sm mt-1 uppercase tracking-widest">{filtered.length} results</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search roles..." className="px-5 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2" style={{"--tw-ring-color": primary} as any} />
+              {locations.length > 1 && (
+                <select value={locFilter} onChange={(e) => setLocFilter(e.target.value)} className="px-5 py-3 bg-white border border-gray-200 rounded-2xl text-sm outline-none">
+                  <option value="">Locations</option>
+                  {locations.map(l => <option key={l} value={l}>{l}</option>)}
+                </select>
+              )}
+            </div>
           </div>
 
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <div className="relative flex-1">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search by job title..."
-                value={search}
-                onChange={function(e) { setSearch(e.target.value); }}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-gray-400 transition-colors"
-                aria-label="Search jobs"
-              />
-            </div>
-            {locations.length > 1 && (
-              <select
-                value={locFilter}
-                onChange={function(e) { setLocFilter(e.target.value); }}
-                className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-gray-400 sm:min-w-36"
-                aria-label="Filter by location"
-              >
-                <option value="">All locations</option>
-                {locations.map(function(l) { return <option key={l} value={l}>{l}</option>; })}
-              </select>
-            )}
-            {types.length > 1 && (
-              <select
-                value={typeFilter}
-                onChange={function(e) { setTypeFilter(e.target.value); }}
-                className="bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:border-gray-400 sm:min-w-36"
-                aria-label="Filter by job type"
-              >
-                <option value="">All types</option>
-                {types.map(function(t) { return <option key={t} value={t}>{JOB_TYPE_LABELS[t] || t}</option>; })}
-              </select>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {filtered.map(job => (
+              <div key={job._id} onClick={() => setApplyJob(job)} className="bg-white border border-gray-100 rounded-[2rem] p-8 hover:shadow-xl hover:border-transparent transition-all cursor-pointer group">
+                <div className="flex justify-between items-start mb-6">
+                  <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-gray-50 text-gray-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                    {JOB_TYPE_LABELS[job.jobType] || job.jobType}
+                  </span>
+                  <span className="text-[10px] font-bold text-gray-300">{timeAgo(job.createdAt)}</span>
+                </div>
+                <h3 className="text-xl font-black mb-3 group-hover:text-indigo-600 transition-colors">{job.title}</h3>
+                <p className="text-gray-400 text-sm mb-6 flex items-center gap-2 font-medium">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  {job.location}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-black" style={{ color: primary }}>{salary(job)}</span>
+                  <span className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-50 text-gray-300 group-hover:bg-indigo-600 group-hover:text-white transition-all transform group-hover:translate-x-1">→</span>
+                </div>
+              </div>
+            ))}
           </div>
-
-          {/* Active filter pills */}
-          {hasFilters && (
-            <div className="flex gap-2 flex-wrap mb-4">
-              {search && (
-                <button onClick={function() { setSearch(''); }} className="text-xs px-3 py-1.5 rounded-full border font-medium" style={{ borderColor: primary + '60', color: primary }}>
-                  {'"' + search + '" x'}
-                </button>
-              )}
-              {locFilter && (
-                <button onClick={function() { setLocFilter(''); }} className="text-xs px-3 py-1.5 rounded-full border font-medium" style={{ borderColor: primary + '60', color: primary }}>
-                  {locFilter + ' x'}
-                </button>
-              )}
-              {typeFilter && (
-                <button onClick={function() { setTypeFilter(''); }} className="text-xs px-3 py-1.5 rounded-full border font-medium" style={{ borderColor: primary + '60', color: primary }}>
-                  {(JOB_TYPE_LABELS[typeFilter] || typeFilter) + ' x'}
-                </button>
-              )}
-              <button onClick={function() { setSearch(''); setLocFilter(''); setTypeFilter(''); }} className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-400 hover:text-gray-600">
-                Clear all
-              </button>
-            </div>
-          )}
-
-          {/* Job cards */}
-          {filtered.length === 0 ? (
-            <div className="border-2 border-dashed border-gray-200 rounded-2xl py-16 text-center">
-              <p className="text-3xl mb-3">🔎</p>
-              <p className="text-gray-500 font-medium">No roles match your search</p>
-              <p className="text-sm text-gray-400 mt-1">Try adjusting your filters</p>
-              {hasFilters && (
-                <button onClick={function() { setSearch(''); setLocFilter(''); setTypeFilter(''); }}
-                  className="mt-4 text-sm font-semibold underline" style={{ color: primary }}>
-                  Clear filters
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {filtered.map(function(job) {
-                return (
-                  <article
-                    key={job._id}
-                    className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-gray-300 hover:shadow-md transition-all cursor-pointer group"
-                    onClick={function() { setApplyJob(job); }}
-                    tabIndex={0}
-                    role="button"
-                    aria-label={'Apply for ' + job.title}
-                    onKeyDown={function(e) { if (e.key === 'Enter') setApplyJob(job); }}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-gray-900 text-base leading-snug mb-2 group-hover:text-gray-700">
-                          {job.title}
-                        </h3>
-                        <div className="flex flex-wrap gap-3 text-sm text-gray-500 mb-3">
-                          <span className="flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            {job.location}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                              <rect width="20" height="14" x="2" y="7" rx="2" /><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
-                            </svg>
-                            {JOB_TYPE_LABELS[job.jobType] || job.jobType}
-                          </span>
-                          {salary(job) && (
-                            <span className="font-medium text-gray-700">{salary(job)}</span>
-                          )}
-                        </div>
-                        {job.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5">
-                            {job.tags.slice(0, 4).map(function(tag) {
-                              return (
-                                <span key={tag} className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ backgroundColor: primary + '15', color: primary }}>
-                                  {tag}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className="text-xs text-gray-400">{timeAgo(job.createdAt)}</span>
-                        <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: primary + '15', color: primary }}>
-                          →
-                        </span>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
         </section>
 
-        {/* Social links */}
-        {(company.branding.website || company.branding.linkedin || company.branding.twitter) && (
-          <section className="border-t border-gray-200 pt-10">
-            <div className="flex items-center gap-4 flex-wrap">
-              <span className="text-sm text-gray-500">Follow us:</span>
-              {company.branding.website && (
-                <a href={company.branding.website} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline" style={{ color: primary }}>
-                  Website
-                </a>
-              )}
-              {company.branding.linkedin && (
-                <a href={company.branding.linkedin} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline" style={{ color: primary }}>
-                  LinkedIn
-                </a>
-              )}
-              {company.branding.twitter && (
-                <a href={company.branding.twitter} target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:underline" style={{ color: primary }}>
-                  Twitter
-                </a>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* Footer */}
-        <footer className="border-t border-gray-200 pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-400">
-          <p>{'© ' + new Date().getFullYear() + ' ' + company.name + '. All rights reserved.'}</p>
-          <p>{'Powered by Careers Builder'}</p>
+        <footer className="border-t border-gray-100 pt-12 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <p className="text-sm text-gray-400 font-medium">© {new Date().getFullYear()} {company.name}</p>
+          <div className="flex gap-6 text-sm font-bold" style={{ color: primary }}>
+            {company.branding.website && <a href={company.branding.website} target="_blank" rel="noreferrer">Website</a>}
+            {company.branding.linkedin && <a href={company.branding.linkedin} target="_blank" rel="noreferrer">LinkedIn</a>}
+          </div>
         </footer>
-      </div>
+      </main>
 
-      {applyJob && company && (
-        <ApplyDrawer job={applyJob} company={company} onClose={function() { setApplyJob(null); }} />
-      )}
+      {applyJob && <ApplyDrawer job={applyJob} company={company} onClose={() => setApplyJob(null)} />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; // Added React for safety
 import { useParams, Link } from 'react-router-dom';
 import { tenantApi, jobsApi } from '../api';
 import { useAuthStore } from '../store/auth.store';
@@ -29,23 +29,41 @@ export function PreviewPage() {
   const [loading, setLoading]   = useState(true);
   const [publishing, setPublishing] = useState(false);
 
-  useEffect(function() {
-    Promise.all([
-      tenantApi.get(),
-      jobsApi.list({ limit: 100, status: 'published' }),
-    ]).then(function(results) {
-      setBranding(results[0].branding || {});
-      setJobs(results[1].data || []);
-      setLoading(false);
-    }).catch(function() { setLoading(false); });
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [tenantRes, jobsRes] = await Promise.all([
+          tenantApi.get(),
+          jobsApi.list({ limit: 100, status: 'published' }),
+        ]);
+        
+        // FIX: Extract data from response objects (usually wrapped in .data)
+        const tenantData = tenantRes?.data ?? tenantRes;
+        const jobsData = jobsRes?.data ?? jobsRes;
+
+        setBranding(tenantData?.branding || {});
+        setJobs(Array.isArray(jobsData) ? jobsData : (jobsData?.data || []));
+      } catch (err) {
+        console.error("Failed to load preview data", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
   }, []);
 
-  async function handlePublish(published: boolean) {
+  async function handlePublish(targetStatus: boolean) {
     setPublishing(true);
     try {
-      var updated = await tenantApi.setPublished(published);
-      setTenant(updated);
-    } finally { setPublishing(false); }
+      const response = await tenantApi.setPublished(targetStatus);
+      // FIX: Ensure you pass the object, not the raw Axios response
+      const updatedTenant = response?.data ?? response;
+      setTenant(updatedTenant);
+    } catch (err) {
+      console.error("Publish toggle failed", err);
+    } finally { 
+      setPublishing(false); 
+    }
   }
 
   if (loading) return (
@@ -54,10 +72,11 @@ export function PreviewPage() {
     </div>
   );
 
-  var b = branding || {} as Branding;
-  var primary   = b.primaryColor || '#6366f1';
-  var secondary = b.secondaryColor || '#eef2ff';
-  var isPublished = tenant?.published || false;
+  // Type-safe branding access
+  const b = branding || {} as Branding;
+  const primary   = b.primaryColor || '#6366f1';
+  const secondary = b.secondaryColor || '#eef2ff';
+  const isPublished = tenant?.published || false;
 
   return (
     <div className="min-h-screen bg-white">
@@ -73,43 +92,40 @@ export function PreviewPage() {
             </svg>
             Back to editor
           </Link>
-          <span className="text-gray-600">|</span>
+          <span className="text-gray-700">|</span>
           <span className="text-xs text-yellow-400 font-medium">
             Preview mode — candidates cannot see this until you publish
           </span>
         </div>
         <div className="flex items-center gap-2">
           {isPublished && (
-            <a
-              href={'/' + slug + '/careers'}
+            <Link
+              to={'/' + slug + '/careers'}
               target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-gray-300 hover:text-white transition-colors"
+              className="text-xs text-gray-300 hover:text-white transition-colors mr-2"
             >
               View live page
-            </a>
+            </Link>
           )}
           <Button
-            variant={isPublished ? 'secondary' : 'primary'}
+            variant={isPublished ? 'danger' : 'primary'} // Changed to danger for unpublish clarity
             size="sm"
             loading={publishing}
-            onClick={function() { handlePublish(!isPublished); }}
+            onClick={() => handlePublish(!isPublished)}
           >
             {isPublished ? 'Unpublish' : 'Publish now'}
           </Button>
         </div>
       </div>
 
-      {/* Render the careers page exactly as candidates see it */}
+      {/* Career Page Content */}
       <div style={{ fontFamily: 'Inter, ui-sans-serif, system-ui' }}>
-
-        {/* Nav */}
         <nav style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', position: 'sticky', top: '44px', zIndex: 20 }}>
           <div style={{ maxWidth: 1000, margin: '0 auto', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {b.logoUrl ? (
                 <img src={b.logoUrl} alt={tenant?.name || ''} style={{ height: 28, objectFit: 'contain' }}
-                  onError={function(e) { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  onError={(e) => { (e.currentTarget.style.display = 'none'); }} />
               ) : (
                 <span style={{ fontWeight: 700, fontSize: 18, color: '#111' }}>{tenant?.name || slug}</span>
               )}
@@ -120,119 +136,63 @@ export function PreviewPage() {
           </div>
         </nav>
 
-        {/* Hero */}
+        {/* Hero Section */}
         <div style={{ backgroundColor: secondary }}>
           {b.bannerUrl && (
             <div style={{ position: 'relative', height: 240, overflow: 'hidden' }}>
               <img src={b.bannerUrl} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={function(e) { (e.target as HTMLImageElement).style.display = 'none'; }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.25)' }} />
+                onError={(e) => { (e.currentTarget.style.display = 'none'); }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.15)' }} />
             </div>
           )}
-          <div style={{ maxWidth: 1000, margin: '0 auto', padding: '80px 24px' }}>
+          <div style={{ maxWidth: 1000, margin: '0 auto', padding: '60px 24px' }}>
             <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: primary, marginBottom: 16 }}>
               {(tenant?.name || slug) + ' - Careers'}
             </p>
-            <h1 style={{ fontWeight: 800, color: primary, fontSize: 'clamp(2.4rem, 5vw, 4rem)', lineHeight: 1.05, letterSpacing: '-0.03em', marginBottom: 20 }}>
+            <h1 style={{ fontWeight: 800, color: primary, fontSize: 'clamp(2rem, 5vw, 3.5rem)', lineHeight: 1.1, letterSpacing: '-0.02em', marginBottom: 20 }}>
               {b.heroHeadline || 'Join our team'}
             </h1>
-            <p style={{ color: '#4b5563', fontSize: 18, lineHeight: 1.65, maxWidth: 540, fontWeight: 300 }}>
+            <p style={{ color: '#4b5563', fontSize: 17, lineHeight: 1.6, maxWidth: 540, fontWeight: 400 }}>
               {b.heroSubtext || 'We are looking for talented people to join us.'}
             </p>
-            {jobs.length > 0 && (
-              <div style={{ display: 'flex', gap: 12, marginTop: 36, flexWrap: 'wrap' }}>
-                <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 14, padding: '16px 22px', border: '1px solid rgba(0,0,0,0.08)' }}>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: '#111' }}>{jobs.length}</div>
-                  <div style={{ fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 2 }}>Open roles</div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
         <div style={{ maxWidth: 1000, margin: '0 auto', padding: '56px 24px' }}>
-
-          {/* About */}
+          {/* About Section */}
           {b.about && (
             <div style={{ marginBottom: 56 }}>
               <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: primary, marginBottom: 16 }}>About us</p>
-              <p style={{ color: '#4b5563', fontSize: 15, lineHeight: 1.8, fontWeight: 300 }}>{b.about}</p>
+              <p style={{ color: '#4b5563', fontSize: 15, lineHeight: 1.8 }}>{b.about}</p>
             </div>
           )}
 
-          {/* Life at company */}
-          {b.lifeAtCompany && (
-            <div style={{ marginBottom: 56 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: primary, marginBottom: 16 }}>
-                {'Life at ' + (tenant?.name || slug)}
-              </p>
-              <p style={{ color: '#4b5563', fontSize: 15, lineHeight: 1.8, fontWeight: 300 }}>{b.lifeAtCompany}</p>
-            </div>
-          )}
-
-          {/* Culture video */}
-          {b.cultureVideoUrl && (
-            <div style={{ marginBottom: 56 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: primary, marginBottom: 16 }}>Our culture</p>
-              <div style={{ position: 'relative', paddingBottom: '56.25%', borderRadius: 16, overflow: 'hidden' }}>
-                <iframe
-                  src={b.cultureVideoUrl}
-                  title="Culture video"
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
-                  allowFullScreen
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Jobs */}
+          {/* Jobs Listing */}
           <div id="preview-jobs">
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 24 }}>
-              <h2 style={{ fontWeight: 800, fontSize: 28, color: '#111' }}>Open positions</h2>
-              <span style={{ fontSize: 16, color: '#9ca3af' }}>({jobs.length})</span>
-            </div>
-
+            <h2 style={{ fontWeight: 800, fontSize: 24, color: '#111', marginBottom: 24 }}>Open positions ({jobs.length})</h2>
             {jobs.length === 0 ? (
-              <div style={{ border: '2px dashed #e5e7eb', borderRadius: 20, padding: '48px 32px', textAlign: 'center' }}>
-                <p style={{ color: '#9ca3af', fontSize: 14 }}>No published jobs yet. Add jobs from the dashboard.</p>
+              <div style={{ border: '2px dashed #e5e7eb', borderRadius: 16, padding: '48px', textAlign: 'center' }}>
+                <p style={{ color: '#9ca3af' }}>No published jobs found.</p>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-                {jobs.map(function(job) {
-                  return (
-                    <div key={job._id} style={{ background: '#fff', border: '1.5px solid #eaeaea', borderRadius: 20, padding: '20px' }}>
-                      <h3 style={{ fontWeight: 700, fontSize: 15, color: '#111', marginBottom: 8, lineHeight: 1.3 }}>{job.title}</h3>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 13, color: '#6b7280', marginBottom: 12 }}>
-                        <span>{job.location}</span>
-                        <span>·</span>
-                        <span>{JOB_TYPE_LABELS[job.jobType] || job.jobType}</span>
-                        {job.workPolicy && <span style={{ color: '#9ca3af' }}>({job.workPolicy})</span>}
-                      </div>
-                      {job.salaryRange && (
-                        <p style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 10 }}>{job.salaryRange}</p>
-                      )}
-                      {job.tags && job.tags.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {job.tags.slice(0, 3).map(function(tag) {
-                            return (
-                              <span key={tag} style={{ fontSize: 11, padding: '3px 10px', borderRadius: 50, background: primary + '15', color: primary, fontWeight: 500 }}>
-                                {tag}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                {jobs.map((job) => (
+                  <div key={job._id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 16, padding: '24px' }}>
+                    <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 8 }}>{job.title}</h3>
+                    <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 12 }}>
+                      {job.location} · {JOB_TYPE_LABELS[job.jobType] || job.jobType}
                     </div>
-                  );
-                })}
+                    {job.tags && (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        {job.tags.slice(0, 2).map(t => (
+                          <span key={t} style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: primary + '10', color: primary, fontWeight: 600 }}>{t}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
-          </div>
-
-          {/* Footer */}
-          <div style={{ marginTop: 72, paddingTop: 28, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 13, color: '#9ca3af' }}>
-            <span>{'© ' + new Date().getFullYear() + ' ' + (tenant?.name || slug) + '. All rights reserved.'}</span>
-            <span>Powered by Careers Builder</span>
           </div>
         </div>
       </div>

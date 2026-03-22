@@ -1,14 +1,19 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { jobsApi } from '../api';
 import { Button, Input, Textarea, Select, Badge, Modal, EmptyState, Spinner } from '../components/ui';
 
-interface Job { _id: string; title: string; description: string; location: string; jobType: string; status: string; tags: string[]; salaryMin?: number; salaryMax?: number; }
+interface Job { 
+  _id: string; title: string; description: string; location: string; 
+  jobType: string; status: string; tags: string[]; 
+  salaryMin?: number; salaryMax?: number; 
+}
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
   { value: 'published', label: 'Published' },
   { value: 'closed', label: 'Closed' },
 ];
+
 const TYPE_OPTIONS = [
   { value: 'full-time', label: 'Full-time' },
   { value: 'part-time', label: 'Part-time' },
@@ -17,71 +22,51 @@ const TYPE_OPTIONS = [
   { value: 'remote', label: 'Remote' },
 ];
 
-function statusColor(s: string): 'green' | 'yellow' | 'gray' {
-  if (s === 'published') return 'green';
-  if (s === 'draft') return 'yellow';
-  return 'gray';
-}
-
-const EMPTY_FORM = { title: '', description: '', location: 'Remote', jobType: 'full-time', status: 'draft', tags: '', salaryMin: '', salaryMax: '' };
+const EMPTY_FORM = { 
+  title: '', description: '', location: 'Remote', 
+  jobType: 'full-time', status: 'draft', tags: '', 
+  salaryMin: '', salaryMax: '' 
+};
 
 export function JobsPage() {
-  const [jobs, setJobs]       = useState<Job[]>([]);
-  const [total, setTotal]     = useState(0);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Job | null>(null);
-  const [saving, setSaving]   = useState(false);
-  const [form, setForm]       = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await jobsApi.list();
-      setJobs(data.data || []);
-      setTotal(data.total || 0);
-    } finally { setLoading(false); }
-  }
+      const response = await jobsApi.list();
+      const data = response?.data ?? response;
+      setJobs(Array.isArray(data) ? data : (data?.data || []));
+      setTotal(data?.total || (Array.isArray(data) ? data.length : 0));
+    } catch (err) {
+      console.error("Load failed", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(function() { load(); }, []);
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  function openNew() {
-    setEditing(null);
-    setForm(EMPTY_FORM);
-    setModalOpen(true);
-  }
+  const setField = (k: keyof typeof EMPTY_FORM) => (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    setForm(prev => ({ ...prev, [k]: e.target.value }));
+  };
 
-  function openEdit(job: Job) {
-    setEditing(job);
-    setForm({
-      title: job.title,
-      description: job.description,
-      location: job.location,
-      jobType: job.jobType,
-      status: job.status,
-      tags: job.tags.join(', '),
-      salaryMin: job.salaryMin ? String(job.salaryMin) : '',
-      salaryMax: job.salaryMax ? String(job.salaryMax) : '',
-    });
-    setModalOpen(true);
-  }
-
-  function setField(k: string) {
-    return function(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
-      setForm(function(f) { return Object.assign({}, f, { [k]: e.target.value }); });
-    };
-  }
-
-  async function handleSave() {
+  const handleSave = async () => {
     setSaving(true);
     try {
       const payload = {
-        title: form.title,
-        description: form.description,
-        location: form.location,
-        jobType: form.jobType,
-        status: form.status,
-        tags: form.tags.split(',').map(function(t) { return t.trim(); }).filter(Boolean),
+        ...form,
+        tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         salaryMin: form.salaryMin ? Number(form.salaryMin) : undefined,
         salaryMax: form.salaryMax ? Number(form.salaryMax) : undefined,
       };
@@ -92,59 +77,91 @@ export function JobsPage() {
       }
       setModalOpen(false);
       load();
-    } finally { setSaving(false); }
-  }
+    } catch (err) {
+      alert("Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-  async function handleDelete(id: string) {
-    if (!confirm('Delete this job?')) return;
-    await jobsApi.remove(id);
-    load();
-  }
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this job?')) return;
+    try {
+      await jobsApi.remove(id);
+      load();
+    } catch (err) {
+      alert("Delete failed");
+    }
+  };
+
+  const statusColor = (s: string) => {
+    if (s === 'published') return 'green';
+    if (s === 'draft') return 'yellow';
+    return 'gray';
+  };
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-8 max-w-7xl mx-auto">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Jobs</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{total} total</p>
+          <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
+          <p className="text-sm text-gray-500">{total} total listings</p>
         </div>
-        <Button onClick={openNew}>+ New job</Button>
+        <Button onClick={() => { setEditing(null); setForm(EMPTY_FORM); setModalOpen(true); }}>
+          + New Job
+        </Button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
         {loading ? (
-          <div className="flex items-center justify-center py-16"><Spinner size="lg" /></div>
+          <div className="flex justify-center py-20"><Spinner size="lg" /></div>
         ) : jobs.length === 0 ? (
-          <EmptyState title="No jobs yet" description="Create your first job posting." action={<Button onClick={openNew}>+ New job</Button>} />
+          <EmptyState title="No jobs found" description="Create a job to get started." />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left border-b border-gray-200">
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Title</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Location</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Type</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500">Status</th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-500 text-right">Actions</th>
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase text-xs">
+                <tr>
+                  <th className="px-6 py-4 font-semibold">Title</th>
+                  <th className="px-6 py-4 font-semibold">Location</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {jobs.map(function(job) {
-                  return (
-                    <tr key={job._id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3 font-medium text-gray-900">{job.title}</td>
-                      <td className="px-5 py-3 text-gray-500">{job.location}</td>
-                      <td className="px-5 py-3 text-gray-500 capitalize">{job.jobType}</td>
-                      <td className="px-5 py-3"><Badge color={statusColor(job.status)}>{job.status}</Badge></td>
-                      <td className="px-5 py-3 text-right">
-                        <div className="flex gap-2 justify-end">
-                          <Button variant="ghost" size="sm" onClick={function() { openEdit(job); }}>Edit</Button>
-                          <Button variant="danger" size="sm" onClick={function() { handleDelete(job._id); }}>Delete</Button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {jobs.map((job) => (
+                  <tr key={job._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 font-medium text-gray-900">{job.title}</td>
+                    <td className="px-6 py-4 text-gray-500">{job.location}</td>
+                    <td className="px-6 py-4">
+                      {/* Fixed: Wrapped Badge to handle 'className' and cast color to 'any' */}
+                      <span className="capitalize">
+                        <Badge color={statusColor(job.status) as any}>
+                          {job.status}
+                        </Badge>
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          setEditing(job);
+                          setForm({
+                            title: job.title,
+                            description: job.description,
+                            location: job.location,
+                            jobType: job.jobType,
+                            status: job.status,
+                            tags: job.tags.join(', '),
+                            salaryMin: job.salaryMin?.toString() || '',
+                            salaryMax: job.salaryMax?.toString() || '',
+                          });
+                          setModalOpen(true);
+                        }}>Edit</Button>
+                        <Button variant="danger" size="sm" onClick={() => handleDelete(job._id)}>Delete</Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -153,27 +170,27 @@ export function JobsPage() {
 
       <Modal
         open={modalOpen}
-        onClose={function() { setModalOpen(false); }}
-        title={editing ? 'Edit job' : 'New job'}
+        onClose={() => setModalOpen(false)}
+        title={editing ? 'Edit Job' : 'New Job'}
         footer={
-          <>
-            <Button variant="secondary" onClick={function() { setModalOpen(false); }}>Cancel</Button>
-            <Button onClick={handleSave} loading={saving}>{editing ? 'Save changes' : 'Create job'}</Button>
-          </>
+          <div className="flex gap-2 justify-end w-full">
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} loading={saving}>{editing ? 'Save' : 'Create'}</Button>
+          </div>
         }
       >
-        <div className="space-y-4">
-          <Input label="Job title" value={form.title} onChange={setField('title')} placeholder="Senior Frontend Engineer" required />
-          <Textarea label="Description" value={form.description} onChange={setField('description')} rows={5} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Location" value={form.location} onChange={setField('location')} placeholder="Remote" />
-            <Select label="Job type" value={form.jobType} onChange={setField('jobType')} options={TYPE_OPTIONS} />
+        <div className="space-y-4 py-2">
+          <Input label="Title" value={form.title} onChange={setField('title')} required />
+          <Textarea label="Description" value={form.description} onChange={setField('description')} rows={4} />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Location" value={form.location} onChange={setField('location')} />
+            <Select label="Type" value={form.jobType} onChange={setField('jobType')} options={TYPE_OPTIONS} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Salary min" type="number" value={form.salaryMin} onChange={setField('salaryMin')} placeholder="80000" />
-            <Input label="Salary max" type="number" value={form.salaryMax} onChange={setField('salaryMax')} placeholder="120000" />
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="Salary Min" type="number" value={form.salaryMin} onChange={setField('salaryMin')} />
+            <Input label="Salary Max" type="number" value={form.salaryMax} onChange={setField('salaryMax')} />
           </div>
-          <Input label="Tags (comma-separated)" value={form.tags} onChange={setField('tags')} placeholder="React, TypeScript" />
+          <Input label="Tags (comma separated)" value={form.tags} onChange={setField('tags')} />
           <Select label="Status" value={form.status} onChange={setField('status')} options={STATUS_OPTIONS} />
         </div>
       </Modal>

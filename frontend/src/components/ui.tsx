@@ -1,6 +1,6 @@
 import React from 'react';
 
-// ── Spinner ───────────────────────────────────────────────────────────
+// ── Spinner ──
 export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const s = size === 'sm' ? 'h-4 w-4' : size === 'lg' ? 'h-8 w-8' : 'h-5 w-5';
   return (
@@ -11,7 +11,7 @@ export function Spinner({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   );
 }
 
-// ── Button ────────────────────────────────────────────────────────────
+// ── Button ──
 interface BtnProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
@@ -29,7 +29,7 @@ export function Button({ variant = 'primary', size = 'md', loading, children, di
     <button
       {...props}
       disabled={disabled || loading}
-      className={'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ' + v + ' ' + sz + ' ' + className}
+      className={'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 ' + v + ' ' + sz + ' ' + className}
     >
       {loading && <Spinner size="sm" />}
       {children}
@@ -37,7 +37,7 @@ export function Button({ variant = 'primary', size = 'md', loading, children, di
   );
 }
 
-// ── Input ─────────────────────────────────────────────────────────────
+// ── Input ──
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
@@ -50,14 +50,14 @@ export function Input({ label, error, className = '', id, ...props }: InputProps
       <input
         id={inputId}
         {...props}
-        className={'block w-full rounded-lg border px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 transition-colors ' + (error ? 'border-red-400 focus:border-red-400 focus:ring-red-400' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500') + ' ' + className}
+        className={'block w-full rounded-lg border px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 transition-colors appearance-none ' + (error ? 'border-red-400 focus:border-red-400 focus:ring-red-400' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500') + ' ' + className}
       />
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
 
-// ── Textarea ──────────────────────────────────────────────────────────
+// ── Textarea ──
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
@@ -71,14 +71,14 @@ export function Textarea({ label, error, className = '', id, ...props }: Textare
         id={inputId}
         rows={4}
         {...props}
-        className={'block w-full rounded-lg border px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 resize-none transition-colors ' + (error ? 'border-red-400 focus:border-red-400 focus:ring-red-400' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500') + ' ' + className}
+        className={'block w-full rounded-lg border px-3 py-2 text-sm placeholder-gray-400 focus:outline-none focus:ring-1 resize-none transition-colors appearance-none ' + (error ? 'border-red-400 focus:border-red-400 focus:ring-red-400' : 'border-gray-300 focus:border-indigo-500 focus:ring-indigo-500') + ' ' + className}
       />
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
   );
 }
 
-// ── Select ────────────────────────────────────────────────────────────
+// ── Select ──
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   options: { value: string; label: string }[];
@@ -91,7 +91,7 @@ export function Select({ label, options, className = '', id, ...props }: SelectP
       <select
         id={inputId}
         {...props}
-        className={'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ' + className}
+        className={'block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white ' + className}
       >
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -99,7 +99,7 @@ export function Select({ label, options, className = '', id, ...props }: SelectP
   );
 }
 
-// ── Badge ─────────────────────────────────────────────────────────────
+// ── Badge ──
 type BadgeColor = 'green' | 'yellow' | 'gray' | 'red' | 'blue' | 'purple';
 export function Badge({ children, color = 'gray' }: { children: React.ReactNode; color?: BadgeColor }) {
   const colors: Record<BadgeColor, string> = {
@@ -107,53 +107,53 @@ export function Badge({ children, color = 'gray' }: { children: React.ReactNode;
     gray: 'bg-gray-100 text-gray-700', red: 'bg-red-100 text-red-700',
     blue: 'bg-blue-100 text-blue-700', purple: 'bg-purple-100 text-purple-700',
   };
-  return <span className={'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + colors[color]}>{children}</span>;
+  return <span className={'whitespace-nowrap inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' + colors[color]}>{children}</span>;
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────
+// ── Modal ──
 export function Modal({ open, onClose, title, children, footer }: {
   open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode;
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" />
+      <div className="relative bg-white rounded-t-2xl sm:rounded-xl shadow-xl w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <button onClick={onClose} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 transition-colors">&times;</button>
         </div>
         <div className="overflow-y-auto p-5 flex-1">{children}</div>
-        {footer && <div className="px-5 py-4 border-t border-gray-200 flex justify-end gap-2">{footer}</div>}
+        {footer && <div className="px-5 py-4 bg-gray-50 border-t border-gray-100 flex flex-col sm:flex-row justify-end gap-2">{footer}</div>}
       </div>
     </div>
   );
 }
 
-// ── EmptyState ────────────────────────────────────────────────────────
+// ── EmptyState ──
 export function EmptyState({ title, description, action }: { title: string; description?: string; action?: React.ReactNode; }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
+    <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
       <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-4">
         <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
         </svg>
       </div>
       <p className="text-sm font-medium text-gray-900">{title}</p>
-      {description && <p className="text-sm text-gray-500 mt-1">{description}</p>}
+      {description && <p className="text-xs text-gray-500 mt-1 max-w-xs">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>
   );
 }
 
-// ── ColorPicker ───────────────────────────────────────────────────────
+// ── ColorPicker ──
 export function ColorPicker({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void; }) {
   return (
-    <div>
+    <div className="w-full">
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
       <div className="flex items-center gap-2">
-        <input type="color" value={value || '#6366f1'} onChange={e => onChange(e.target.value)} className="h-9 w-14 rounded border border-gray-300 cursor-pointer p-0.5" />
-        <input type="text" value={value || ''} onChange={e => onChange(e.target.value)} placeholder="#6366f1" className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+        <input type="color" value={value || '#6366f1'} onChange={e => onChange(e.target.value)} className="h-10 w-14 shrink-0 rounded border border-gray-300 cursor-pointer p-1" />
+        <input type="text" value={value || ''} onChange={e => onChange(e.target.value)} placeholder="#6366f1" className="block w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors" />
       </div>
     </div>
   );
